@@ -1,0 +1,59 @@
+[project]
+name = "glaze"
+version = "0.2.0"
+description = "PySide6 theming framework with generated theme-colors for Linux"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    {name = "Awareness10", email = "robmart99@gmail.com"},
+]
+keywords = ["glaze", "pyside6", "theme", "gui", "linux", "hyprland"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: POSIX :: Linux",
+]
+
+dependencies = [
+    "pyside6>=6.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "nuitka>=2.8.9",
+    "ordered-set>=4.1.0",
+    "zstandard>=0.23.0",
+    "rich>=14.2.0",
+    "pillow>=12.0.0",
+]
+
+
+[project.scripts]
+glaze-launcher = "glaze.__main__:main"
+glaze-login-form = "glaze.components.form:main"
+glaze-data-table = "glaze.components.data_table:main"
+glaze-settings = "glaze.components.settings:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+"glaze" = ["assets/*.svg"]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[dependency-groups]
+dev = [
+    "nuitka>=2.8.9",
+    "ordered-set>=4.1.0",
+    "zstandard>=0.23.0",
+    "rich>=14.2.0",
+    "pillow>=12.0.0",
+]

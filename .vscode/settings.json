@@ -1,0 +1,5 @@
+{
+    "workbench.secondarySideBar.defaultVisibility": "hidden",
+    "editor.semanticHighlighting.enabled": true,
+    "python.languageServer": "Pylance",
+}

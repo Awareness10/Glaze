@@ -1,0 +1,129 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    env:
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up UV
+      uses: astral-sh/setup-uv@v5
+      with:
+        enable-cache: true
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          build-essential \
+          patchelf \
+          ccache \
+          libxcb-cursor0 \
+          libegl1 \
+          libgl1 \
+          libxkbcommon0 \
+          libdbus-1-3 \
+          libxcb-icccm4 \
+          libxcb-image0 \
+          libxcb-keysyms1 \
+          libxcb-randr0 \
+          libxcb-render-util0 \
+          libxcb-shape0 \
+          libxcb-xfixes0 \
+          libxcb-xinerama0
+
+    - name: Set up ccache
+      if: matrix.python-version == '3.12'
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ${{ github.job }}-${{ matrix.python-version }}
+        max-size: 500M
+
+    - name: Cache Nuitka build directory
+      if: matrix.python-version == '3.12'
+      uses: actions/cache@v4
+      with:
+        path: |
+          build/
+          ~/.nuitka
+        key: nuitka-${{ runner.os }}-${{ hashFiles('src/**/*.py', 'pyproject.toml', 'uv.lock') }}
+        restore-keys: |
+          nuitka-${{ runner.os }}-
+
+    - name: Install Python dependencies
+      run: uv sync --extra dev
+
+    - name: Test imports
+      run: |
+        uv run python -c "from glaze import theme, get_base_stylesheet; print('Core imports successful')"
+        uv run python -c "from glaze.widgets import ThemedComboBox, RoundedHeaderView; print('Widget imports successful')"
+        uv run python -c "from glaze.components import LoginWindow, DataTableWindow; print('Component imports successful')"
+
+    - name: Verify package structure
+      run: |
+        uv run python -c "import glaze; print(f'Package version: {glaze.__version__}')"
+        uv run python -c "from glaze.theme import theme; print(f'Theme bg_primary: {theme.bg_primary}')"
+
+    - name: Build with Nuitka (launcher only)
+      if: matrix.python-version == '3.12'
+      env:
+        NUITKA_CACHE_DIR: ${{ github.workspace }}/.nuitka
+      run: |
+        # Verify compilers are available
+        which gcc g++
+        gcc --version
+
+        echo "Starting Nuitka build with ccache..."
+        ccache --zero-stats
+        uv run python build.py --component launcher
+        echo "Build complete. ccache statistics:"
+        ccache --show-stats
+
+    - name: Verify build artifacts
+      if: matrix.python-version == '3.12'
+      run: |
+        ls -lah dist/
+        test -d dist || (echo "Build failed: dist directory not found" && exit 1)
+        test -f dist/glaze-launcher || (echo "Build failed: launcher executable not found" && exit 1)
+        echo "Build artifacts verified"
+
+    - name: Upload build artifacts
+      if: matrix.python-version == '3.12'
+      uses: actions/upload-artifact@v4
+      with:
+        name: glaze-launcher-ubuntu-latest
+        path: dist/glaze-launcher
+        retention-days: 30
+
+    - name: Build summary
+      if: always()
+      run: |
+        echo "### Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Python Version:** ${{ matrix.python-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package Manager:** UV (astral-sh/uv)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner:** ubuntu-latest" >> $GITHUB_STEP_SUMMARY
+        echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+        if [ "${{ matrix.python-version }}" == "3.12" ]; then
+          echo "- **Build:** Nuitka compilation completed" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Build:** Skipped (only runs on Python 3.12)" >> $GITHUB_STEP_SUMMARY
+        fi
