@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import shutil
 import subprocess
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -72,16 +73,16 @@ def get_matugen_colors(
     dark_mode: bool = True,
 ) -> dict[str, str]:
     """Get raw color dictionary from matugen.
-
+    
     Args:
         image_path: Path to wallpaper image
         color: Hex color string (e.g., "#e94560")
         scheme: Matugen scheme name
         dark_mode: Whether to extract dark mode colors
-
+        
     Returns:
         Dictionary mapping color names to hex values
-
+        
     Raises:
         ValueError: If neither image_path nor color provided
         RuntimeError: If matugen is not installed
@@ -89,36 +90,45 @@ def get_matugen_colors(
     """
     if not image_path and not color:
         raise ValueError("Must provide either image_path or color")
-
-    if not is_matugen_available():
-        raise RuntimeError(
-            "matugen is not installed. Install with: paru -S matugen-bin "
-            "or cargo install matugen"
-        )
-
+    
     mode = "dark" if dark_mode else "light"
-
     if image_path:
+        # Resolve symlinks - matugen can't determine image format from symlinks
+        resolved_path = str(Path(image_path).resolve())
         cmd = [
-            "matugen", "image", str(image_path),
+            "matugen", "image", resolved_path,
             "-t", scheme,
             "-m", mode,
-            "-j", "hex"
+            "-j", "hex",
+            "--source-color-index", "0",
         ]
     else:
-        hex_color = color if color.startswith("#") else f"#{color}"
+        hex_color = color if color.startswith("#") else f"#{color}" # type: ignore
         cmd = [
             "matugen", "color", "hex", hex_color,
             "-t", scheme,
             "-m", mode,
             "-j", "hex"
         ]
-
+    
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     data = json.loads(result.stdout)
-
-    # Matugen returns {color_name: {dark: hex, light: hex, default: hex}}
-    return {k: v[mode] for k, v in data["colors"].items()}
+    
+    # matugen 4.0.0 new default: {colors: {name: {dark: {color: "#hex"}, light: ...}}}
+    # matugen <4.0.0 / --old-json-output: {colors: {name: {dark: "#hex", light: ...}}}
+    # Handle both formats
+    colors = {}
+    for color_name, color_modes in data["colors"].items():
+        value = color_modes.get(mode)
+        if value is None:
+            continue
+        # New format: {color: "#hex"}, old format: "#hex"
+        if isinstance(value, dict):
+            colors[color_name] = value["color"]
+        else:
+            colors[color_name] = value
+    
+    return colors
 
 
 def generate_theme_from_matugen(
