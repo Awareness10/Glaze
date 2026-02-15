@@ -112,7 +112,10 @@ def get_matugen_colors(
         ]
     
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    data = json.loads(result.stdout)
+    # matugen 4.0.0 may append non-JSON text after the JSON object
+    # (e.g. Fabric reload messages), so use raw_decode to ignore trailing data
+    decoder = json.JSONDecoder()
+    data, _ = decoder.raw_decode(result.stdout)
     
     # matugen 4.0.0 new default: {colors: {name: {dark: {color: "#hex"}, light: ...}}}
     # matugen <4.0.0 / --old-json-output: {colors: {name: {dark: "#hex", light: ...}}}
