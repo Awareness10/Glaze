@@ -1,6 +1,6 @@
 [project]
 name = "glaze"
-version = "0.2.0"
+version = "0.2.1"
 description = "PySide6 theming framework with generated theme-colors for Linux"
 readme = "README.md"
 requires-python = ">=3.12"
