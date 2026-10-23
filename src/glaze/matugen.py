@@ -101,6 +101,7 @@ def get_matugen_colors(
             "-m", mode,
             "-j", "hex",
             "--source-color-index", "0",
+            "--dry-run",
         ]
     else:
         hex_color = color if color.startswith("#") else f"#{color}" # type: ignore
@@ -108,12 +109,15 @@ def get_matugen_colors(
             "matugen", "color", "hex", hex_color,
             "-t", scheme,
             "-m", mode,
-            "-j", "hex"
+            "-j", "hex",
+            "--dry-run",
         ]
     
+    # --dry-run: only read the colors. Without it matugen applies every template
+    # in the user's matugen config and sets the wallpaper.
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-    # matugen 4.0.0 may append non-JSON text after the JSON object
-    # (e.g. Fabric reload messages), so use raw_decode to ignore trailing data
+    # matugen 4.0.0 may append non-JSON text after the JSON object, so use
+    # raw_decode to ignore trailing data
     decoder = json.JSONDecoder()
     data, _ = decoder.raw_decode(result.stdout)
     
