@@ -116,6 +116,16 @@ def build_component(module_path: str, output_name: str, debug: bool = False):
         log_error(f"Could not find source file: {file_path}")
         return False
 
+    # Clean stale Nuitka build cache to prevent missing shared library issues.
+    # Nuitka caches dependency scans in .build/.dist directories; stale caches
+    # can omit transitive Qt dependencies (e.g. libQt6DBus.so.6) after updates.
+    source_name = module_parts[0] if is_main_module else module_parts[-1]
+    for suffix in (".build", ".dist", ".onefile-build"):
+        cache_dir = BUILD_DIR / f"{source_name}{suffix}"
+        if cache_dir.exists():
+            shutil.rmtree(cache_dir)
+            log_info(f"  Cleaned stale cache: {cache_dir.name}")
+
     # Base Nuitka command with optimizations
     cmd = [
         sys.executable, "-m", "nuitka",
