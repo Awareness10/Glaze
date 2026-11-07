@@ -8,6 +8,7 @@ from glaze.widgets.title_bar import (
 )
 from glaze.widgets.frameless_window import FramelessMainWindow
 from glaze.widgets.donate_button import DonateButton
+from glaze.widgets.spin_box import inset_spinbox_text
 
 __all__ = [
     "ThemedComboBox",
@@ -21,4 +22,5 @@ __all__ = [
     "CloseButton",
     "FramelessMainWindow",
     "DonateButton",
+    "inset_spinbox_text",
 ]

@@ -13,6 +13,7 @@ from PySide6.QtGui import (
 
 from ..theme import get_current_theme, get_base_stylesheet
 from ..wayland import make_window_frameless, hyprctl_float_active
+from .spin_box import inset_spinbox_text
 from .title_bar import TitleBar
 
 # Constants
@@ -64,6 +65,8 @@ class FramelessMainWindow(QMainWindow):
     def showEvent(self, event: QShowEvent):
         """Handle show event - float window on Hyprland after display."""
         super().showEvent(event)
+        # Subclasses build their widgets after __init__, so here rather than there
+        inset_spinbox_text(self)
         # Use a short delay to ensure window is mapped before floating
         if self._floating:
             QTimer.singleShot(50, hyprctl_float_active)
@@ -159,6 +162,7 @@ class FramelessMainWindow(QMainWindow):
         - Window background (via repaint)
         """
         self._apply_stylesheet()
+        inset_spinbox_text(self)
         self.title_bar.refresh_theme()
         self.update()  # Trigger repaint for rounded corners
 
